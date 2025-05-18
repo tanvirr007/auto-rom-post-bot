@@ -5,6 +5,8 @@ from datetime import datetime
 import pytz
 
 ASSETS_PATH = os.path.join(os.path.dirname(__file__), "assets")
+BANNER_URL = "https://raw.githubusercontent.com/Matrixx-Devices/android_vendor_MatrixxOTA/15.0/assets/banner.jpg"
+DOWNLOADED_BANNER_PATH = os.path.join(ASSETS_PATH, "banner.jpg")
 
 def load_config():
     config_path = os.path.join(ASSETS_PATH, "config.json")
@@ -15,7 +17,6 @@ def load_config():
         raise FileNotFoundError(f"Configuration file '{config_path}' not found.")
 
 def get_bot_token(token_file):
-    """Retrieve the bot token from a file or prompt the user to enter it."""
     token_file = os.path.expanduser(token_file)
     if os.path.exists(token_file):
         with open(token_file, "r") as file:
@@ -28,7 +29,6 @@ def get_bot_token(token_file):
         return token
 
 def validate_bot_token(bot_token):
-    """Validate the bot token by making a test API call."""
     url = f"https://api.telegram.org/bot{bot_token}/getMe"
     response = requests.get(url)
     if response.status_code != 200:
@@ -36,7 +36,6 @@ def validate_bot_token(bot_token):
     return response.json()
 
 def format_caption():
-    """Generate the formatted text template."""
     today = datetime.now().strftime("%d/%m/%y")
     caption = f"""
 
@@ -70,7 +69,6 @@ def format_caption():
     return caption
 
 def get_bangladesh_time():
-    """Get the current time and date in Bangladesh Standard Time (BST)."""
     tz = pytz.timezone("Asia/Dhaka")
     now = datetime.now(tz)
     time = now.strftime("%I:%M %p")
@@ -78,7 +76,6 @@ def get_bangladesh_time():
     return time, date
 
 def format_footer():
-    """Generate the footer for the post with additional info."""
     time, date = get_bangladesh_time()
     footer = f"""
 ---
@@ -89,8 +86,17 @@ def format_footer():
 """
     return footer
 
+def download_banner_image(url, save_path):
+    response = requests.get(url)
+    if response.status_code == 200:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        with open(save_path, "wb") as f:
+            f.write(response.content)
+        return save_path
+    else:
+        raise Exception(f"Failed to download banner image. Status: {response.status_code}")
+
 def send_photo_with_caption(bot_token, chat_id, photo_path, caption):
-    """Send a photo with a caption to a Telegram chat."""
     if not os.path.exists(photo_path):
         raise FileNotFoundError(f"File '{photo_path}' not found.")
 
@@ -117,11 +123,10 @@ if __name__ == "__main__":
         validate_bot_token(BOT_TOKEN)
 
         caption = format_caption()
-
         footer = format_footer()
         full_caption = caption + footer
 
-        banner_path = os.path.join(ASSETS_PATH, config["banner_path"])
+        banner_path = download_banner_image(BANNER_URL, DOWNLOADED_BANNER_PATH)
 
         response = send_photo_with_caption(BOT_TOKEN, config["chat_id"], banner_path, full_caption)
         print("Photo sent successfully. Response:", response)
